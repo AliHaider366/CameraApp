@@ -10,6 +10,7 @@ import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.CameraCaptureSession
+import android.hardware.camera2.CameraCaptureSession.CaptureCallback
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
@@ -28,6 +29,7 @@ import android.view.TextureView
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.Toast
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -40,20 +42,41 @@ class CameraHelper {
     private lateinit var cameraDevice: CameraDevice
     private lateinit var capReq: CaptureRequest.Builder
     private lateinit var imageReader: ImageReader
-    private lateinit var cameraCharacteristics : CameraCharacteristics
-    private lateinit var streamConfigMap : StreamConfigurationMap
+    private lateinit var cameraCharacteristics: CameraCharacteristics
+    private lateinit var streamConfigMap: StreamConfigurationMap
     private lateinit var outputSizes: Array<Size>
+    private var flag: Int = 0
+    private var zoomValue = 1f
+    private lateinit var surface: Surface
 
     //Pass Aspect Ratio Here
     private var targetAspectRatio = Rational(1, 1)
     private var currentCameraId: String = "0"
-    private var sensorOrientation : Int? = null
-    private var DSI_width : Int? = null
-    private var DSI_height : Int? = null
-    private lateinit var windowManager : WindowManager
+    private var sensorOrientation: Int? = null
+    private var DSI_width: Int? = null
+    private var DSI_height: Int? = null
+    private lateinit var windowManager: WindowManager
 
 //    private lateinit var handler: Handler
 //    private lateinit var handlerThread: HandlerThread
+
+
+    fun zoomIn(textureView: TextureView) {
+        flag = 1
+        if (zoomValue < 3f) {
+            zoomValue = (zoomValue + 0.5).toFloat()
+            openCamera(textureView)
+        }
+        if(zoomValue == 3f || zoomValue > 3f){
+            Toast.makeText(textureView.context, "Maximum Zoomed", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun zoomOut(textureView: TextureView) {
+        flag = 2
+        zoomValue = (zoomValue - 0.5).toFloat()
+        openCamera(textureView)
+    }
 
     @SuppressLint("MissingPermission")
     fun openCamera(textureView: TextureView) {
@@ -68,31 +91,59 @@ class CameraHelper {
             CameraDevice.StateCallback() {
             override fun onOpened(p0: CameraDevice) {
                 cameraDevice = p0
-                cameraCharacteristics = cameraManager.getCameraCharacteristics(currentCameraId)
-                streamConfigMap = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
-                outputSizes = streamConfigMap.getOutputSizes(SurfaceTexture::class.java)
-                sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION)
-                windowManager = textureView.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-                capReq = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+                if (flag == 0) {
+                    zoomValue = 1f
+                    cameraCharacteristics = cameraManager.getCameraCharacteristics(currentCameraId)
+                    streamConfigMap =
+                        cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
+                    outputSizes = streamConfigMap.getOutputSizes(SurfaceTexture::class.java)
+                    sensorOrientation =
+                        cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION)
+                    windowManager =
+                        textureView.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                    capReq = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
 
-                val surface = Surface(textureView.surfaceTexture)
-                capReq.addTarget(surface)
+                    surface = Surface(textureView.surfaceTexture)
+                    capReq.addTarget(surface)
 
-                val selectedSize: Size? = aspectRatio(targetAspectRatio)
-                val cropRegion = selectedSize?.let { Rect(20, 20, it.width, it.height) }
-                capReq.set(CaptureRequest.SCALER_CROP_REGION, cropRegion)
+                    val selectedSize: Size? = aspectRatio(targetAspectRatio)
+                    val cropRegion = selectedSize?.let { Rect(0, 0, it.width, it.height) }
+                    capReq.set(CaptureRequest.SCALER_CROP_REGION, cropRegion)
+                    var zoom = Zoom(cameraCharacteristics)
 
-                val displayMetrics = DisplayMetrics()
-                windowManager.defaultDisplay.getMetrics(displayMetrics)
-                DSI_height = displayMetrics.heightPixels
-                DSI_width = displayMetrics.widthPixels
-                setAspectRatioTextureView(textureView,selectedSize!!.height,selectedSize!!.width)
+                    zoom.setZoom(capReq, zoomValue)
 
-                imageReader = ImageReader.newInstance(selectedSize.width, selectedSize.height, ImageFormat.JPEG, 1)
+                    val displayMetrics = DisplayMetrics()
+                    windowManager.defaultDisplay.getMetrics(displayMetrics)
+                    DSI_height = displayMetrics.heightPixels
+                    DSI_width = displayMetrics.widthPixels
+                    setAspectRatioTextureView(
+                        textureView,
+                        selectedSize!!.height,
+                        selectedSize!!.width
+                    )
+
+                    imageReader = ImageReader.newInstance(
+                        selectedSize.width,
+                        selectedSize.height,
+                        ImageFormat.JPEG,
+                        1
+                    )
 
 
-                for (size in outputSizes) {
-                    Log.d("CameraOutputSize : ", "Width: ${size.width}, Height: ${size.height}")
+                    for (size in outputSizes) {
+                        Log.d("CameraOutputSize : ", "Width: ${size.width}, Height: ${size.height}")
+                    }
+                }
+                if (flag == 1) {
+                    var zoom = Zoom(cameraCharacteristics)
+                    zoom.setZoom(capReq, zoomValue)
+                    flag = 0
+                }
+                if (flag == 2) {
+                    var zoom = Zoom(cameraCharacteristics)
+                    zoom.setZoom(capReq, zoomValue)
+                    flag = 0
                 }
 
                 cameraDevice.createCaptureSession(
@@ -123,36 +174,40 @@ class CameraHelper {
         }, null)
     }
 
-    fun setAspectRatioBySpinner(ratio: String, textureView: TextureView){
-        if(ratio == "1:1"){
-            targetAspectRatio = Rational(1,1)
+    fun setAspectRatioBySpinner(ratio: String, textureView: TextureView) {
+        if (ratio == "1:1") {
+            targetAspectRatio = Rational(1, 1)
             openCamera(textureView)
         }
-        if(ratio == "4:3"){
-            targetAspectRatio = Rational(4,3)
+        if (ratio == "4:3") {
+            targetAspectRatio = Rational(4, 3)
             openCamera(textureView)
         }
-        if(ratio == "16:9"){
-            targetAspectRatio = Rational(16,9)
+        if (ratio == "16:9") {
+            targetAspectRatio = Rational(16, 9)
             openCamera(textureView)
         }
     }
 
 
-    private fun setAspectRatioTextureView(textureView: TextureView,ResolutionWidth: Int, ResolutionHeight: Int) {
+    private fun setAspectRatioTextureView(
+        textureView: TextureView,
+        ResolutionWidth: Int,
+        ResolutionHeight: Int
+    ) {
         if (ResolutionWidth > ResolutionHeight) {
             val newWidth: Int = DSI_width!!
             val newHeight: Int = DSI_width!! * ResolutionWidth / ResolutionHeight
-            updateTextureViewSize(textureView,newWidth, newHeight)
+            updateTextureViewSize(textureView, newWidth, newHeight)
         } else {
             val newWidth: Int = DSI_width!!
             val newHeight: Int = DSI_width!! * ResolutionHeight / ResolutionWidth
-            updateTextureViewSize(textureView,newWidth, newHeight)
+            updateTextureViewSize(textureView, newWidth, newHeight)
         }
     }
 
-    private fun updateTextureViewSize(textureView: TextureView,viewWidth: Int, viewHeight: Int) {
-        Log.d( "MyTag : ","TextureView Width : $viewWidth TextureView Height : $viewHeight")
+    private fun updateTextureViewSize(textureView: TextureView, viewWidth: Int, viewHeight: Int) {
+        Log.d("MyTag : ", "TextureView Width : $viewWidth TextureView Height : $viewHeight")
 //        var widthDifference = 0
 //        var heightDifference = 0
 //        var finalWidth: Int = DSI_width!!

@@ -61,6 +61,15 @@ class MainActivity : AppCompatActivity() {
             cameraHelper.switchCamera(binding.textureView)
         }
 
+        binding.buttonZoomIn.setOnClickListener{
+            cameraHelper.zoomIn(binding.textureView)
+        }
+
+        binding.buttonZoomOut.setOnClickListener{
+            cameraHelper.zoomOut(binding.textureView)
+        }
+
+
         // Create an ArrayAdapter using the string array and a default spinner layout
         val items = listOf("1:1", "4:3", "16:9")
         val adapter = ArrayAdapter(this, R.layout.simple_spinner_item, items)
@@ -78,7 +87,7 @@ class MainActivity : AppCompatActivity() {
                     return
                 }
                 cameraHelper.setAspectRatioBySpinner(p0?.selectedItem.toString(), binding.textureView)
-                Toast.makeText(this@MainActivity, "Selected item: " + p0!!.selectedItem.toString(), Toast.LENGTH_SHORT).show()
+                //Toast.makeText(this@MainActivity, "Selected item: " + p0!!.selectedItem.toString(), Toast.LENGTH_SHORT).show()
             }
 
             override fun onNothingSelected(p0: AdapterView<*>?) {
