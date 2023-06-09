@@ -19,8 +19,6 @@ import android.media.Image
 import android.media.ImageReader
 import android.net.Uri
 import android.os.Environment
-import android.os.Handler
-import android.os.HandlerThread
 import android.util.DisplayMetrics
 import android.util.Log
 import android.util.Rational
@@ -54,15 +52,15 @@ class CameraHelper {
     private var DSI_height : Int? = null
     private lateinit var windowManager : WindowManager
 
-    private lateinit var handler: Handler
-    private lateinit var handlerThread: HandlerThread
+//    private lateinit var handler: Handler
+//    private lateinit var handlerThread: HandlerThread
 
     @SuppressLint("MissingPermission")
     fun openCamera(textureView: TextureView) {
 
-        handlerThread = HandlerThread("captureThread")
-        handlerThread.start()
-        handler = Handler(handlerThread.looper)
+//        handlerThread = HandlerThread("captureThread")
+//        handlerThread.start()
+//        handler = Handler(handlerThread.looper)
 
         cameraManager =
             textureView.context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
@@ -110,7 +108,7 @@ class CameraHelper {
                         }
 
                     },
-                    handler
+                    null
                 )
             }
 
@@ -195,7 +193,7 @@ class CameraHelper {
     fun imageCapRequest() {
         capReq = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
         capReq.addTarget(imageReader.surface)
-        cameraCaptureSession.capture(capReq.build(), null, handler)
+        cameraCaptureSession.capture(capReq.build(), null, null)
     }
 
     fun takePicture(imageView: ImageView) {
@@ -234,7 +232,7 @@ class CameraHelper {
             imageView.setImageBitmap(rotatedBitmap)
             opStream.close()
             image.close()
-        }, handler)
+        }, null)
 
 
     }
