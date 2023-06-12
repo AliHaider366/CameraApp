@@ -43,6 +43,7 @@ class CameraHelper {
     private lateinit var cameraCharacteristics: CameraCharacteristics
     private lateinit var streamConfigMap: StreamConfigurationMap
     private lateinit var outputSizes: Array<Size>
+    private var selectedSize: Size? = null
     private var flag: Int = 0
     private var zoomValue = 1f
     private lateinit var surface: Surface
@@ -109,7 +110,7 @@ class CameraHelper {
                     surface = Surface(textureView.surfaceTexture)
                     capReq.addTarget(surface)
 
-                    val selectedSize: Size? = aspectRatio(targetAspectRatio)
+                    selectedSize = aspectRatio(targetAspectRatio)
                     //val cropRegion = selectedSize?.let { Rect(0, 0, it.width, it.height) }
                     //capReq.set(CaptureRequest.SCALER_CROP_REGION, cropRegion)
 
@@ -124,12 +125,12 @@ class CameraHelper {
                     setAspectRatioTextureView(
                         textureView,
                         selectedSize!!.height,
-                        selectedSize.width
+                        selectedSize!!.width
                     )
 
                     imageReader = ImageReader.newInstance(
-                        selectedSize.width,
-                        selectedSize.height,
+                        selectedSize!!.width,
+                        selectedSize!!.height,
                         ImageFormat.JPEG,
                         1
                     )
