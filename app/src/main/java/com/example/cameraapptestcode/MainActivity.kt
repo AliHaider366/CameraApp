@@ -69,17 +69,13 @@ class MainActivity : AppCompatActivity() {
             cameraHelper.zoomOut(binding.textureView)
         }
 
-
         // Create an ArrayAdapter using the string array and a default spinner layout
         val items = listOf("1:1", "4:3", "16:9")
         val adapter = ArrayAdapter(this, R.layout.simple_spinner_item, items)
-
         // Specify the layout to use when the list of choices appears
         adapter.setDropDownViewResource(R.layout.simple_spinner_dropdown_item)
-
         // Apply the adapter to the spinner
         binding.spinner.adapter = adapter
-
         binding.spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, p2: Int, p3: Long) {
                 if (isFirstSelection) {

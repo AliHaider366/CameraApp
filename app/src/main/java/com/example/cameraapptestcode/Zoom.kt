@@ -33,7 +33,6 @@ class Zoom(characteristics: CameraCharacteristics) {
             } else {
                 value
             }
-
             hasSupport = maxZoom > DEFAULT_ZOOM_FACTOR
         }
     }

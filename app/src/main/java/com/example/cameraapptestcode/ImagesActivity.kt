@@ -30,5 +30,6 @@ class ImagesActivity : AppCompatActivity() {
         binding.recyclerView.layoutManager = LinearLayoutManager(this@ImagesActivity)
         adapter = RecyclerAdapter(imageList)
         binding.recyclerView.adapter = adapter
+
     }
 }

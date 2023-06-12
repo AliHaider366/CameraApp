@@ -7,11 +7,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
 import android.graphics.Matrix
-import android.graphics.Rect
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.CameraCaptureSession
-import android.hardware.camera2.CameraCaptureSession.CaptureCallback
 import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraCharacteristics.*
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
@@ -21,7 +20,6 @@ import android.media.ImageReader
 import android.net.Uri
 import android.os.Environment
 import android.util.DisplayMetrics
-import android.util.Log
 import android.util.Rational
 import android.util.Size
 import android.view.Surface
@@ -67,7 +65,7 @@ class CameraHelper {
             zoomValue = (zoomValue + 0.5).toFloat()
             openCamera(textureView)
         }
-        if(zoomValue == 3f || zoomValue > 3f){
+        if (zoomValue == 3f || zoomValue > 3f) {
             Toast.makeText(textureView.context, "Maximum Zoomed In", Toast.LENGTH_SHORT).show()
         }
     }
@@ -78,7 +76,7 @@ class CameraHelper {
             zoomValue = (zoomValue - 0.5).toFloat()
             openCamera(textureView)
         }
-        if(zoomValue == 1f || zoomValue < 1f){
+        if (zoomValue == 1f || zoomValue < 1f) {
             Toast.makeText(textureView.context, "Maximum Zoomed Out", Toast.LENGTH_SHORT).show()
         }
     }
@@ -100,10 +98,10 @@ class CameraHelper {
                     zoomValue = 1f
                     cameraCharacteristics = cameraManager.getCameraCharacteristics(currentCameraId)
                     streamConfigMap =
-                        cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
+                        cameraCharacteristics.get(SCALER_STREAM_CONFIGURATION_MAP)!!
                     outputSizes = streamConfigMap.getOutputSizes(SurfaceTexture::class.java)
                     sensorOrientation =
-                        cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION)
+                        cameraCharacteristics.get(SENSOR_ORIENTATION)
                     windowManager =
                         textureView.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
                     capReq = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
@@ -112,12 +110,13 @@ class CameraHelper {
                     capReq.addTarget(surface)
 
                     val selectedSize: Size? = aspectRatio(targetAspectRatio)
-                    val cropRegion = selectedSize?.let { Rect(0, 0, it.width, it.height) }
-                    capReq.set(CaptureRequest.SCALER_CROP_REGION, cropRegion)
-                    var zoom = Zoom(cameraCharacteristics)
+                    //val cropRegion = selectedSize?.let { Rect(0, 0, it.width, it.height) }
+                    //capReq.set(CaptureRequest.SCALER_CROP_REGION, cropRegion)
 
-                    zoom.setZoom(capReq, zoomValue)
+                    //For setting zoom request
+                    Zoom(cameraCharacteristics).setZoom(capReq, zoomValue)
 
+                    //Setting up aspect ratio
                     val displayMetrics = DisplayMetrics()
                     windowManager.defaultDisplay.getMetrics(displayMetrics)
                     DSI_height = displayMetrics.heightPixels
@@ -125,7 +124,7 @@ class CameraHelper {
                     setAspectRatioTextureView(
                         textureView,
                         selectedSize!!.height,
-                        selectedSize!!.width
+                        selectedSize.width
                     )
 
                     imageReader = ImageReader.newInstance(
@@ -135,19 +134,15 @@ class CameraHelper {
                         1
                     )
 
-
-                    for (size in outputSizes) {
-                        Log.d("CameraOutputSize : ", "Width: ${size.width}, Height: ${size.height}")
-                    }
                 }
+
+                //Checking for zoom level
                 if (flag == 1) {
-                    var zoom = Zoom(cameraCharacteristics)
-                    zoom.setZoom(capReq, zoomValue)
+                    Zoom(cameraCharacteristics).setZoom(capReq, zoomValue)
                     flag = 0
                 }
                 if (flag == 2) {
-                    var zoom = Zoom(cameraCharacteristics)
-                    zoom.setZoom(capReq, zoomValue)
+                    Zoom(cameraCharacteristics).setZoom(capReq, zoomValue)
                     flag = 0
                 }
 
@@ -212,27 +207,6 @@ class CameraHelper {
     }
 
     private fun updateTextureViewSize(textureView: TextureView, viewWidth: Int, viewHeight: Int) {
-        Log.d("MyTag : ", "TextureView Width : $viewWidth TextureView Height : $viewHeight")
-//        var widthDifference = 0
-//        var heightDifference = 0
-//        var finalWidth: Int = DSI_width!!
-//        var finalHeight: Int = DSI_height!!
-//        val screenAspectRatio: Float = (DSI_width!! / DSI_height!!).toFloat()
-//
-//        if (screenAspectRatio.toInt() > targetAspectRatio.toInt()) { //Keep width crop height
-//            finalHeight = DSI_width!!.toInt()/targetAspectRatio.toInt()
-//            heightDifference = finalHeight - DSI_height!!
-//        } else { //Keep height crop width
-//            finalWidth =  DSI_height!!.toInt() * targetAspectRatio.toInt()
-//            widthDifference = finalWidth - DSI_width!!
-//        }
-//
-//        var ll : LinearLayout.LayoutParams = textureView.layoutParams as LinearLayout.LayoutParams
-//        ll.width = viewWidth
-//        ll.height = viewHeight
-//        ll.leftMargin = ll.leftMargin - (widthDifference / 2)
-//        ll.topMargin = ll.topMargin - (heightDifference  / 2)
-//        textureView.layoutParams = ll
         textureView.layoutParams = LinearLayout.LayoutParams(viewWidth, viewHeight)
     }
 
@@ -318,7 +292,8 @@ class CameraHelper {
         val buffer = image.planes[0].buffer
         val data = ByteArray(buffer.remaining())
         buffer.get(data)
-        val bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
+
+        val bitmap = decodeSampledBitmap(data, DSI_width!!, DSI_height!!)
 
         val matrix = Matrix()
         matrix.postRotate(rotation.toFloat())
@@ -326,11 +301,55 @@ class CameraHelper {
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
+    private fun decodeSampledBitmap(
+        data: ByteArray,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Bitmap {
+        // First decode with inJustDecodeBounds=true to check dimensions
+        return BitmapFactory.Options().run {
+            inJustDecodeBounds = true
+            BitmapFactory.decodeByteArray(data, 0, data.size, this)
+
+            // Calculate inSampleSize
+            inSampleSize = calculateSampleSize(this, reqWidth, reqHeight)
+
+            // Decode bitmap with inSampleSize set
+            inJustDecodeBounds = false
+
+            BitmapFactory.decodeByteArray(data, 0, data.size, this)
+        }
+    }
+
+    private fun calculateSampleSize(
+        options: BitmapFactory.Options,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Int {
+        val (height: Int, width: Int) = options.run { outHeight to outWidth }
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+
+            val halfHeight: Int = height / 2
+            val halfWidth: Int = width / 2
+
+            // Calculate the largest inSampleSize value that is a power of 2 and keeps both
+            // height and width larger than the requested height and width.
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+
+        return inSampleSize
+    }
+
+
     private fun getCameraId(lensFacing: Int): String {
         val cameraIds = cameraManager.cameraIdList
         for (cameraId in cameraIds) {
             val characteristics = cameraManager.getCameraCharacteristics(cameraId)
-            val cameraDirection = characteristics.get(CameraCharacteristics.LENS_FACING)
+            val cameraDirection = characteristics.get(LENS_FACING)
             //Log.d("CheckMyLog : ", "Array : $cameraId Dire: $cameraDirection Lens : $lensFacing")
             if (cameraDirection == lensFacing) {
                 return cameraDirection.toString()
@@ -341,10 +360,10 @@ class CameraHelper {
 
     fun switchCamera(textureView: TextureView) {
         val lensFacing =
-            if (currentCameraId == getCameraId(CameraCharacteristics.LENS_FACING_FRONT)) {
-                CameraCharacteristics.LENS_FACING_BACK
+            if (currentCameraId == getCameraId(LENS_FACING_FRONT)) {
+                LENS_FACING_BACK
             } else {
-                CameraCharacteristics.LENS_FACING_FRONT
+                LENS_FACING_FRONT
             }
         currentCameraId = lensFacing.toString()
         cameraDevice.close()
