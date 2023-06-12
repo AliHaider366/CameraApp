@@ -68,14 +68,19 @@ class CameraHelper {
             openCamera(textureView)
         }
         if(zoomValue == 3f || zoomValue > 3f){
-            Toast.makeText(textureView.context, "Maximum Zoomed", Toast.LENGTH_SHORT).show()
+            Toast.makeText(textureView.context, "Maximum Zoomed In", Toast.LENGTH_SHORT).show()
         }
     }
 
     fun zoomOut(textureView: TextureView) {
         flag = 2
-        zoomValue = (zoomValue - 0.5).toFloat()
-        openCamera(textureView)
+        if (zoomValue > 1f) {
+            zoomValue = (zoomValue - 0.5).toFloat()
+            openCamera(textureView)
+        }
+        if(zoomValue == 1f || zoomValue < 1f){
+            Toast.makeText(textureView.context, "Maximum Zoomed Out", Toast.LENGTH_SHORT).show()
+        }
     }
 
     @SuppressLint("MissingPermission")
